@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { DEFAULT_TAM_DATA, Segment, PRESET_POPULATIONS } from "@/lib/types";
@@ -48,6 +48,9 @@ export default function TAMVisualizer() {
   const [showSavePrompt, setShowSavePrompt] = useState(false);
   const [pendingSaveName, setPendingSaveName] = useState("");
 
+  // Current TAM display name
+  const [currentTamName, setCurrentTamName] = useState("World Population — AI Usage");
+
   // ── Auth listener ────────────────────────────────────────
   useEffect(() => {
     const supabase = createClient();
@@ -66,19 +69,21 @@ export default function TAMVisualizer() {
   }, []);
 
   // ── Load saved populations when auth state changes ───────
-  const loadSaved = useCallback(async () => {
+  useEffect(() => {
+    let cancelled = false;
     if (user) {
       const supabase = createClient();
-      const pops = await loadFromSupabase(supabase);
-      setSavedPopulations(pops);
+      loadFromSupabase(supabase).then((pops) => {
+        if (!cancelled) setSavedPopulations(pops);
+      });
     } else {
-      setSavedPopulations(loadFromLocalStorage());
+      const local = loadFromLocalStorage();
+      Promise.resolve().then(() => {
+        if (!cancelled) setSavedPopulations(local);
+      });
     }
+    return () => { cancelled = true; };
   }, [user]);
-
-  useEffect(() => {
-    loadSaved();
-  }, [loadSaved]);
 
   // ── Load shared population from URL ──────────────────────
   useEffect(() => {
@@ -110,6 +115,7 @@ export default function TAMVisualizer() {
     // Show save prompt with auto-generated name
     const name = `${market} - ${populationLabel}`;
     setPendingSaveName(name);
+    setCurrentTamName(name);
     setShowSavePrompt(true);
   };
 
@@ -117,6 +123,7 @@ export default function TAMVisualizer() {
     setSegments(pop.segments.map((s) => ({ ...s })));
     setTotalPopulation(pop.totalPopulation);
     setCurrentPopulationId(pop.id);
+    setCurrentTamName(pop.name);
     setShowSavePrompt(false);
   };
 
@@ -154,6 +161,16 @@ export default function TAMVisualizer() {
     }
   };
 
+  const handleDismissCustom = () => {
+    setShowSavePrompt(false);
+    // Reset to default preset
+    const preset = PRESET_POPULATIONS[0];
+    setSegments(preset.segments.map((s) => ({ ...s })));
+    setTotalPopulation(preset.totalPopulation);
+    setCurrentPopulationId(preset.id);
+    setCurrentTamName(preset.name);
+  };
+
   const handleDeletePopulation = async (id: string) => {
     if (user) {
       const supabase = createClient();
@@ -161,10 +178,11 @@ export default function TAMVisualizer() {
       if (ok) {
         setSavedPopulations((prev) => prev.filter((p) => p.id !== id));
         if (currentPopulationId === id) {
-          setCurrentPopulationId("preset-world-ai");
           const preset = PRESET_POPULATIONS[0];
+          setCurrentPopulationId(preset.id);
           setSegments(preset.segments.map((s) => ({ ...s })));
           setTotalPopulation(preset.totalPopulation);
+          setCurrentTamName(preset.name);
         }
       }
     } else {
@@ -172,10 +190,11 @@ export default function TAMVisualizer() {
       setSavedPopulations(updated);
       saveToLocalStorage(updated);
       if (currentPopulationId === id) {
-        setCurrentPopulationId("preset-world-ai");
         const preset = PRESET_POPULATIONS[0];
+        setCurrentPopulationId(preset.id);
         setSegments(preset.segments.map((s) => ({ ...s })));
         setTotalPopulation(preset.totalPopulation);
+        setCurrentTamName(preset.name);
       }
     }
   };
@@ -200,9 +219,37 @@ export default function TAMVisualizer() {
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-6"
           >
-            <h1 className="text-6xl sm:text-8xl font-bold tracking-tight text-white mb-2">
-              TAM
+            <h1 className="text-6xl sm:text-8xl font-bold tracking-tight text-white mb-1">
+              TAM.SH
             </h1>
+            <p className="text-base sm:text-lg text-gray-400 mb-3">
+              Total Addressable Market Visualization Tool
+            </p>
+
+            {/* Current TAM name with save/dismiss */}
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <h2 className="text-xl sm:text-2xl font-semibold text-white">
+                {currentTamName}
+              </h2>
+              {showSavePrompt && (
+                <>
+                  <button
+                    onClick={handleSaveConfirm}
+                    className="text-sm bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded transition-colors font-medium"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={handleDismissCustom}
+                    className="text-gray-400 hover:text-white transition-colors text-lg leading-none px-1"
+                    title="Discard and return to preset"
+                  >
+                    &times;
+                  </button>
+                </>
+              )}
+            </div>
+
             <p className="text-lg sm:text-xl text-gray-300">
               Each dot is {formatNumber(Math.round(perDot))} people
             </p>
@@ -226,10 +273,10 @@ export default function TAMVisualizer() {
               onSelect={handleSelectPopulation}
               onSave={handleSavePopulation}
               onDelete={handleDeletePopulation}
-              showSavePrompt={showSavePrompt}
+              showSavePrompt={false}
               pendingSaveName={pendingSaveName}
               onSaveConfirm={handleSaveConfirm}
-              onSaveDismiss={() => setShowSavePrompt(false)}
+              onSaveDismiss={handleDismissCustom}
             />
           </motion.div>
 
@@ -267,6 +314,7 @@ export default function TAMVisualizer() {
             targetRef={exportRef as React.RefObject<HTMLDivElement>}
             segments={segments}
             totalPopulation={totalPopulation}
+            tamName={currentTamName}
           />
         </motion.div>
 

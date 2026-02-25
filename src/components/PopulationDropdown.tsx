@@ -63,6 +63,7 @@ export default function PopulationDropdown({
 
   return (
     <div className="flex flex-col items-center gap-2">
+      <label className="text-xs text-gray-500 uppercase tracking-wider">Presets</label>
       <div className="flex items-center gap-2 justify-center flex-wrap">
         <select
           value={currentId}

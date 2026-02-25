@@ -10,6 +10,7 @@ interface ExportToolbarProps {
   totalPopulation: number;
   gridSize?: number;
   title?: string;
+  tamName?: string;
 }
 
 const WATERMARK = "created by github.com/FrancisZamora";
@@ -18,15 +19,17 @@ function renderCleanCanvas(
   segments: Segment[],
   totalPopulation: number,
   gridSize: number = 50,
-  title?: string
+  title?: string,
+  tamName?: string
 ): HTMLCanvasElement {
+  const scale = 3; // 3x resolution for high-quality export
   const dotCount = gridSize * gridSize;
   const perDot = totalPopulation / dotCount;
   const dotSize = 12;
   const dotGap = 2;
   const cellSize = dotSize + dotGap;
   const padding = 60;
-  const headerHeight = 120;
+  const headerHeight = 180;
   const legendHeight = Math.ceil(segments.length / 2) * 30 + 40;
   const watermarkHeight = 40;
   const gridWidth = gridSize * cellSize;
@@ -35,27 +38,46 @@ function renderCleanCanvas(
   const canvasHeight = headerHeight + gridHeight + legendHeight + watermarkHeight + padding * 2;
 
   const canvas = document.createElement("canvas");
-  canvas.width = canvasWidth;
-  canvas.height = canvasHeight;
+  canvas.width = canvasWidth * scale;
+  canvas.height = canvasHeight * scale;
   const ctx = canvas.getContext("2d")!;
+  ctx.scale(scale, scale);
 
   // Background
   ctx.fillStyle = "#0a0a0a";
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-  // Title
+  // Title: TAM.SH
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 48px system-ui, -apple-system, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(title || "TAM", canvasWidth / 2, padding + 45);
+  ctx.fillText("TAM.SH", canvasWidth / 2, padding + 45);
 
-  // Subtitle
+  // Subtitle: Total Addressable Market Visualization Tool
+  ctx.fillStyle = "#9ca3af";
+  ctx.font = "16px system-ui, -apple-system, sans-serif";
+  ctx.fillText(
+    "Total Addressable Market Visualization Tool",
+    canvasWidth / 2,
+    padding + 72
+  );
+
+  // Current TAM name
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 22px system-ui, -apple-system, sans-serif";
+  ctx.fillText(
+    tamName || title || "World Population — AI Usage",
+    canvasWidth / 2,
+    padding + 105
+  );
+
+  // Dot info
   ctx.fillStyle = "#9ca3af";
   ctx.font = "18px system-ui, -apple-system, sans-serif";
   ctx.fillText(
-    `Each dot is ~${formatNumber(Math.round(perDot))} people`,
+    `Each dot is ${formatNumber(Math.round(perDot))} people`,
     canvasWidth / 2,
-    padding + 75
+    padding + 135
   );
 
   ctx.fillStyle = "#6b7280";
@@ -63,7 +85,7 @@ function renderCleanCanvas(
   ctx.fillText(
     `${dotCount.toLocaleString()} dots = ${formatNumber(totalPopulation)} total`,
     canvasWidth / 2,
-    padding + 95
+    padding + 155
   );
 
   // Build dot color array
@@ -137,13 +159,14 @@ export default function ExportToolbar({
   totalPopulation,
   gridSize = 50,
   title,
+  tamName,
 }: ExportToolbarProps) {
   const [exporting, setExporting] = useState<string | null>(null);
 
   const exportPNG = async () => {
     setExporting("png");
     try {
-      const canvas = renderCleanCanvas(segments, totalPopulation, gridSize, title);
+      const canvas = renderCleanCanvas(segments, totalPopulation, gridSize, title, tamName);
       const link = document.createElement("a");
       link.download = "tam-analysis.png";
       link.href = canvas.toDataURL("image/png");
@@ -156,7 +179,7 @@ export default function ExportToolbar({
   const exportJPEG = async () => {
     setExporting("jpeg");
     try {
-      const canvas = renderCleanCanvas(segments, totalPopulation, gridSize, title);
+      const canvas = renderCleanCanvas(segments, totalPopulation, gridSize, title, tamName);
       const link = document.createElement("a");
       link.download = "tam-analysis.jpg";
       link.href = canvas.toDataURL("image/jpeg", 0.95);
@@ -170,7 +193,7 @@ export default function ExportToolbar({
     setExporting("pdf");
     try {
       const { default: jsPDF } = await import("jspdf");
-      const canvas = renderCleanCanvas(segments, totalPopulation, gridSize, title);
+      const canvas = renderCleanCanvas(segments, totalPopulation, gridSize, title, tamName);
       const imgData = canvas.toDataURL("image/png");
 
       const imgWidth = 190;
