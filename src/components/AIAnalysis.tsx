@@ -196,7 +196,7 @@ export default function AIAnalysis({ onResult }: AIAnalysisProps) {
                 value={customTextPopulation}
                 onChange={(e) => { setCustomTextPopulation(e.target.value); setResolvedCustomText(null); }}
                 onKeyDown={(e) => e.key === "Enter" && resolveCustomPopulation()}
-                placeholder="e.g. restaurants in Miami, nurses in California"
+                placeholder="e.g. Males under 30 in the US, homeowners in Texas"
                 className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm flex-1 focus:outline-none focus:border-blue-500 placeholder:text-gray-500"
               />
               <button
